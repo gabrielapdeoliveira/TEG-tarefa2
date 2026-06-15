@@ -364,7 +364,7 @@ void mostrar_resumo_basico(Grafo* g) {
     }
 }
 
-int main(int argc, char* argv[]) {
+int main() {
     Grafo* g = criar_grafo();
 
     int carregadas = -1;
