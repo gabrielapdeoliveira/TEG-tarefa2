@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <float.h>
 
 #define TAM_PALAVRA 4
 #define MAX_LINHA 100
@@ -33,7 +34,6 @@ typedef struct Grafo {
     int n_multiplas;
 } Grafo;
 
-
 //função para criar um grafo vazio
 Grafo* criar_grafo() {
     Grafo* g = (Grafo*) malloc(sizeof(Grafo));
@@ -45,8 +45,8 @@ Grafo* criar_grafo() {
 
     g->vertices = NULL;
 
-/*o índice é um vetor que aponta diretamente para os 
-vértices do grafo, permitindo acesso rápido por id.*/
+    /*o índice é um vetor que aponta diretamente para os 
+    vértices do grafo, permitindo acesso rápido por id.*/
  
     g->capacidade = 64; // capacidade inicial que pode ser aumentada automaticamente se necessário
     g->indice = (Vertice**) malloc(g->capacidade * sizeof(Vertice*));
@@ -63,6 +63,7 @@ vértices do grafo, permitindo acesso rápido por id.*/
 
     return g;
 }
+
 //função para liberar a memória alocada para o grafo
 void liberar_grafo(Grafo* g) {
     Vertice* v = g->vertices;
@@ -145,28 +146,26 @@ Vertice* inserir_v(Grafo* g, char palavra[]) {
         exit(1);
     }
 
-/*inicializa o novo vértice com a palavra 
-e o id correspondente ao num. atual de vértices do grafo*/
+    /*inicializa o novo vértice com a palavra 
+    e o id correspondente ao num. atual de vértices do grafo*/
     novo->id = g->n_vertices;
     strcpy(novo->palavra, palavra);
     novo->grau = 0;
     novo->lista = NULL;
 
-//aqui o vértice entra no início da lista encadeada
+    //aqui o vértice entra no início da lista encadeada
     novo->prox = g->vertices;
     g->vertices = novo;
 
-/*  além de entrar na lista, o vértice também é salvo no índice
+    /*  além de entrar na lista, o vértice também é salvo no índice
     para recuperar o vértice diretamente pelo id depois.*/
 
     g->indice[novo->id] = novo;
     g->n_vertices++;
     return novo;
 }
-/*
-    função p verificar se uma aresta p determinado 
-    destino já existe, além de ser importante p evitar arestas múltiplas
-*/
+    /*função p verificar se uma aresta p determinado 
+    destino já existe, além de ser importante p evitar arestas múltiplas*/
 int ja_tem_vizinho(Vertice* v, int destino) {
     Vizinho* atual = v->lista;
 
@@ -224,6 +223,7 @@ void add_aresta(Grafo* g, int origem, int destino, double peso) {
 
     g->n_arestas++;
 }
+
 //função para verificar se duas palavras diferem por exatamente uma letra
 int diferem_por_uma_letra(char p1[], char p2[]) {
     int diferencas = 0;
@@ -251,8 +251,8 @@ double calcular_peso_jaccard(char p1[], char p2[]) {
     int n2 = 0;
     int inter = 0;
 
-//função p montar os conjuntos de caracteres únicos de cada palavra
-//OBS: as palavras têm tamanho 4, logo os vetores u1 e u2 possuem no máximo 4 posições
+    //função p montar os conjuntos de caracteres únicos de cada palavra
+    //OBS: as palavras têm tamanho 4, logo os vetores u1 e u2 possuem no máximo 4 posições
 
     for (int i = 0; i < TAM_PALAVRA; i++) {
         int achou = 0;
@@ -281,7 +281,7 @@ double calcular_peso_jaccard(char p1[], char p2[]) {
             u2[n2++] = p2[i];
         }
     }
-//conta a interseção dos conjuntos de caracteres únicos das duas palavras
+    //conta a interseção dos conjuntos de caracteres únicos das duas palavras
     for (int i = 0; i < n1; i++) {
         for (int j = 0; j < n2; j++) {
             if (u1[i] == u2[j]) {
@@ -290,7 +290,7 @@ double calcular_peso_jaccard(char p1[], char p2[]) {
             }
         }
     }
-//calcula a união dos conjuntos de caracteres únicos das duas palavras
+    //calcula a união dos conjuntos de caracteres únicos das duas palavras
     int uniao = n1 + n2 - inter;
 
     if (uniao == 0) {
@@ -328,7 +328,6 @@ int carregar_palavras(Grafo* g, const char* nome_arquivo) {
 /*gera as arestas do grafo comparando as palavras carregadas. como
 o arquivo possui apenas palavras, o programa compara as palavras
 duas a duas para descobrir quais vértices devem ser conectados.*/
-
 void criar_arestas(Grafo* g) {
     Vertice* v1 = g->vertices;
 
@@ -349,7 +348,6 @@ void criar_arestas(Grafo* g) {
 }
 
 /* teste simples para verificar o funcionamento do programa */
-
 void mostrar_resumo_basico(Grafo* g) {
     printf("\n--- RESUMO INICIAL DO GRAFO ---\n");
     printf("Vertices carregados: %d\n", g->n_vertices);
@@ -364,7 +362,150 @@ void mostrar_resumo_basico(Grafo* g) {
     }
 }
 
-int main() {
+void dijkstra(Grafo* g, char str_origem[], char str_destino[]){
+    //Normaliza as palavras de entrada para bater com o padrao
+    normalizar_palavra(str_origem);
+    normalizar_palavra(str_destino);
+
+    Vertice* v_origem = buscar_por_palavra(g, str_origem);
+    Vertice* v_destino = buscar_por_palavra(g, str_destino);
+
+    if (!v_origem || !v_destino){
+        printf("\nErro: Palavra de origem ou destino nao existe no grafo.\n");
+        return;
+    }
+
+    int n = g->n_vertices;
+    double* dist = (double*)malloc(n * sizeof(double));
+    int* ant = (int*)malloc(n * sizeof(int));
+    int* visitado = (int*)calloc(n, sizeof(int));
+
+    for (int i = 0; i < n; i++){
+        dist[i] = DBL_MAX;
+        ant[i] = -1; // -1 significa que nao tem antecessor
+    }
+
+    dist[v_origem->id] = 0.0;
+
+    for (int count = 0; count < n; count++){
+        double min = DBL_MAX;
+        int u = -1;
+
+        //encontra o vertice nao visitado com a menor distancia
+        for (int i = 0; i < n; i++){
+            if (!visitado[i] && dist[i] <= min){
+                min = dist[i];
+                u = i;
+            }
+        }
+
+        //se o menor for infinito ou se chegarmos no destino podemos parar
+        if (u == -1 || u == v_destino->id) break;
+
+        visitado[u] = -1;
+        Vertice* vert_u = g->indice[u];
+        Vizinho* viz = vert_u->lista;
+
+        //relaxamento das arestas
+        while (viz != NULL){
+            int v = viz->id;
+            if (!visitado[v] && dist[u] != DBL_MAX && dist[u] + viz->peso < dist[v]){
+                dist[v] = dist[u] + viz->peso;
+                ant[v] = u;
+            }
+            viz = viz->prox;
+        }
+    }
+
+    printf("\n--- CAMINHO MINIMO (DIJKSTRA)---\n");
+    if (dist[v_destino->id] == DBL_MAX){
+        printf("Nao existe caminho entre '%s' e '%s'.\n", str_origem, str_destino);
+    }else{
+        //reconstroi o caminho de tras para a frente usando o vetor de antecessores (ant)
+        int*caminho = (int*)malloc(n*sizeof(int));
+        int tam_caminho = 0;
+        int atual = v_destino->id;
+
+        while (atual != -1){
+            caminho[tam_caminho++] = atual;
+            atual = ant[atual];
+        }
+
+        printf("Caminho de '%s' para '%s':\n", str_origem, str_destino);
+        for (int i = tam_caminho - 1; i >= 0; i--){
+            printf("%s", g->indice[caminho[i]]->palavra);
+            if (i > 0) printf (" -> ");
+        }
+        printf("\nCusto total (Distancia Jaccard): %.4f\n", dist[v_destino->id]);
+        free(caminho);
+    }
+
+    free(dist);
+    free(ant);
+    free(visitado);
+}
+
+//funcao que verificar o tipo de grafo
+void verificar_tipo_grafo(Grafo* g){
+    printf("\n--- TIPO DE GRAFO ---\n");
+    if (g->n_lacos == 0 && g->n_multiplas == 0){
+        printf("O grafo eh SIMPLES.\n");
+    }else {
+        printf("O grafo eh MULTIGRAFO.\n");
+        if (g->n_lacos > 0) printf(" -> Ocorrencias de lacos: %d\n", g->n_lacos);
+        if (g->n_multiplas > 0) printf(" -> Ocorrencias de arestas multiplas: %d\n", g->n_multiplas);
+    }
+}
+
+//funcao auxiliar de busca em profundidade (dfs)
+void dfs (Grafo* g, int u, int visitado[], int* tamanho, Vertice** v_max, Vertice** v_min){
+    visitado[u] = 1;
+    (*tamanho)++; //vai contar mais vertice
+    Vertice* v = g->indice[u];
+
+    //atualiza os vertices de maior e menor grau do componente
+    if (*v_max == NULL || v->grau > (*v_max)->grau){
+        *v_max = v;
+    }
+    if (*v_min == NULL || v->grau < (*v_min)->grau){
+        *v_min = v;
+    }
+    
+    Vizinho* viz = v->lista;
+    while (viz != NULL){
+        if (!visitado[viz->id]){
+            dfs(g, viz->id, visitado, tamanho, v_max, v_min);
+        }
+        viz = viz->prox;
+    }
+}
+
+//funcao principal para analisar os componentes
+void analisar_componentes (Grafo* g){
+    int* visitado = (int*)calloc(g->n_vertices, sizeof(int));
+    int num_componentes = 0;
+
+    printf("\n--- COMPONENTES CONEXOS ---\n");
+    for (int i = 0; i < g->n_vertices; i++){
+        if (!visitado[i]){
+            num_componentes++;
+            int tamanho = 0;
+            Vertice* v_max = NULL;
+            Vertice* v_min = NULL;
+
+            //inicia a busca para mapear todo o componente conhecido a "i"
+            dfs(g,i, visitado, &tamanho, &v_max, &v_min);
+
+            printf("Componente %d: Tamanho = %d\n", num_componentes, tamanho);
+            if (v_max) printf(" -> Palavra Central (Grau Max): %s (Grau %d)\n", v_max->palavra, v_max->grau);
+            if (v_min) printf(" -> Menos Conexoes  (Grau Min): %s (Grau %d)\n", v_min->palavra, v_min->grau);
+        }
+    }
+    printf("Total de Componentes Conexos: %d\n", num_componentes);
+    free(visitado);
+}
+
+int main(int argc, char *argv[]) {
     Grafo* g = criar_grafo();
 
     int carregadas = -1;
@@ -383,10 +524,25 @@ int main() {
         return 1;
     }
 
+    //criar as arestas
     criar_arestas(g);
     mostrar_resumo_basico(g);
 
-    liberar_grafo(g);
+    //analise do grafo
+    verificar_tipo_grafo(g);
 
+    //analise de componentes conexos
+    analisar_componentes(g);
+
+    //teste de dijkstra
+    char origem[20], destino[20];
+    printf("\nDigite a palavra de origem (4 letras): ");
+    scanf("%19s", origem);
+    printf("\nDigite a palavra de destino (4 letras): ");
+    scanf("%19s", destino);
+
+    dijkstra(g, origem, destino);
+    
+    liberar_grafo(g);
     return 0;
 }
