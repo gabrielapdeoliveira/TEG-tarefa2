@@ -485,6 +485,12 @@ void analisar_componentes (Grafo* g){
     int* visitado = (int*)calloc(g->n_vertices, sizeof(int));
     int num_componentes = 0;
 
+    FILE* arq = fopen("componentes.csv", "w");
+
+    if (arq != NULL) { 
+        fprintf(arq, "componente,tamanho,palavra_central,grau_max,palavra_menor_grau,grau_min\n");
+    }
+
     printf("\n--- COMPONENTES CONEXOS ---\n");
     for (int i = 0; i < g->n_vertices; i++){
         if (!visitado[i]){
@@ -499,10 +505,51 @@ void analisar_componentes (Grafo* g){
             printf("Componente %d: Tamanho = %d\n", num_componentes, tamanho);
             if (v_max) printf(" -> Palavra Central (Grau Max): %s (Grau %d)\n", v_max->palavra, v_max->grau);
             if (v_min) printf(" -> Menos Conexoes  (Grau Min): %s (Grau %d)\n", v_min->palavra, v_min->grau);
+    
+            if (arq != NULL) { // NOVO
+                fprintf(
+                    arq,
+                    "%d,%d,%s,%d,%s,%d\n",
+                    num_componentes,
+                    tamanho,
+                    v_max->palavra,
+                    v_max->grau,
+                    v_min->palavra,
+                    v_min->grau
+                );
+            }
         }
     }
+
+    
     printf("Total de Componentes Conexos: %d\n", num_componentes);
+
+      if (arq != NULL) { 
+        fclose(arq);
+    }
     free(visitado);
+}
+
+void exportar_graus(Grafo* g) {
+    FILE* arquivo = fopen("graus.csv", "w");
+
+    if (arquivo == NULL) {
+        printf("Erro ao criar graus.csv\n");
+        return;
+    }
+
+    fprintf(arquivo, "palavra,grau\n");
+
+    Vertice* atual = g->vertices;
+
+    while (atual != NULL) {
+        fprintf(arquivo, "%s,%d\n", atual->palavra, atual->grau);
+        atual = atual->prox;
+    }
+
+    fclose(arquivo);
+
+    printf("\nArquivo graus.csv exportado com sucesso!\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -533,6 +580,9 @@ int main(int argc, char *argv[]) {
 
     //analise de componentes conexos
     analisar_componentes(g);
+
+    //exportar os graus dos vertices para um arquivo CSV
+    exportar_graus(g);
 
     //teste de dijkstra
     char origem[20], destino[20];
